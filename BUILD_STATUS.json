@@ -1,0 +1,11 @@
+{
+  "project": "ReviewForge",
+  "version": "0.1.0",
+  "files": 20,
+  "rust_source_lines": 772,
+  "sample_report_score": 44,
+  "sample_report_label": "medium",
+  "local_rust_compile": "not run: Rust toolchain unavailable in this environment",
+  "github_ci": "configured to run cargo fmt, clippy, tests, and sample report generation",
+  "sample_report": "docs/sample-report.html"
+}
