@@ -1,0 +1,29 @@
+diff --git a/src/auth/session.rs b/src/auth/session.rs
+index f2a1000..aa12b22 100644
+--- a/src/auth/session.rs
++++ b/src/auth/session.rs
+@@ -18,7 +18,12 @@ pub fn issue_session(user: &User) -> Session {
+-    Session::new(user.id, 3600)
++    let ttl = std::env::var("SESSION_TTL")
++        .ok()
++        .and_then(|value| value.parse().ok())
++        .unwrap_or(86400);
++    Session::new(user.id, ttl)
+ }
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 9912aa1..7721bc4 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -10,6 +10,8 @@ permissions:
+-  contents: read
++  contents: write
++  packages: write
+ jobs:
+   release:
+diff --git a/Cargo.toml b/Cargo.toml
+index 228aa91..442bca3 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -8,6 +8,7 @@ edition = "2021"
+ anyhow = "1"
++jsonwebtoken = "9"
