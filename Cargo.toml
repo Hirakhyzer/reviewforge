@@ -1,0 +1,17 @@
+[package]
+name = "reviewforge"
+version = "0.1.0"
+edition = "2021"
+description = "Offline-first pull request risk analysis and code review report generator"
+license = "MIT"
+repository = "https://github.com/Hirakhyzer/reviewforge"
+keywords = ["code-review", "git", "diff", "cli", "rust"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"
