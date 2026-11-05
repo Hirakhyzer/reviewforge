@@ -5,7 +5,13 @@ use std::process::Command;
 fn sample_diff_generates_markdown_report() {
     let root = env!("CARGO_MANIFEST_DIR");
     let output = Command::new(env!("CARGO_BIN_EXE_reviewforge"))
-        .args(["analyze", "--diff", &format!("{root}/examples/sample.diff"), "--context", "Fixes #42"])
+        .args([
+            "analyze",
+            "--diff",
+            &format!("{root}/examples/sample.diff"),
+            "--context",
+            "Fixes #42",
+        ])
         .output()
         .expect("run reviewforge");
     assert!(output.status.success());
@@ -20,7 +26,15 @@ fn html_output_is_written() {
     let root = env!("CARGO_MANIFEST_DIR");
     let path = std::env::temp_dir().join(format!("reviewforge-{}.html", std::process::id()));
     let output = Command::new(env!("CARGO_BIN_EXE_reviewforge"))
-        .args(["analyze", "--diff", &format!("{root}/examples/sample.diff"), "--format", "html", "--output", path.to_str().expect("utf8")])
+        .args([
+            "analyze",
+            "--diff",
+            &format!("{root}/examples/sample.diff"),
+            "--format",
+            "html",
+            "--output",
+            path.to_str().expect("utf8"),
+        ])
         .output()
         .expect("run reviewforge");
     assert!(output.status.success());
