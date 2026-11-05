@@ -5,19 +5,39 @@ use crate::model::{ChangedFile, ReviewReport};
 pub fn markdown(report: &ReviewReport) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "# {}", report.title);
-    let _ = writeln!(out, "\n> **Risk:** {} / 100 ({})", report.overall_score, report.risk_label);
+    let _ = writeln!(
+        out,
+        "\n> **Risk:** {} / 100 ({})",
+        report.overall_score, report.risk_label
+    );
     let _ = writeln!(out, "\n{}", report.summary);
 
     if !report.issue_refs.is_empty() {
-        let _ = writeln!(out, "\n## Linked issues\n\n{}", report.issue_refs.join(", "));
+        let _ = writeln!(
+            out,
+            "\n## Linked issues\n\n{}",
+            report.issue_refs.join(", ")
+        );
     }
 
     let _ = writeln!(out, "\n## Change overview\n");
     let _ = writeln!(out, "| File | Type | + | - | Risk |");
     let _ = writeln!(out, "|---|---:|---:|---:|---:|");
     for file in &report.files {
-        let score = report.file_risks.iter().find(|risk| risk.path == file.path).map_or(0, |risk| risk.score);
-        let _ = writeln!(out, "| `{}` | {} | {} | {} | {} |", file.path, file.kind.as_str(), file.additions, file.deletions, score);
+        let score = report
+            .file_risks
+            .iter()
+            .find(|risk| risk.path == file.path)
+            .map_or(0, |risk| risk.score);
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} |",
+            file.path,
+            file.kind.as_str(),
+            file.additions,
+            file.deletions,
+            score
+        );
     }
 
     let _ = writeln!(out, "\n## Findings\n");
@@ -25,8 +45,18 @@ pub fn markdown(report: &ReviewReport) -> String {
         let _ = writeln!(out, "No automated review findings.");
     } else {
         for finding in &report.findings {
-            let location = finding.file.as_deref().map_or(String::new(), |file| format!(" — `{file}`"));
-            let _ = writeln!(out, "- **{}:** {}{} — {}", finding.severity.as_str(), finding.title, location, finding.detail);
+            let location = finding
+                .file
+                .as_deref()
+                .map_or(String::new(), |file| format!(" — `{file}`"));
+            let _ = writeln!(
+                out,
+                "- **{}:** {}{} — {}",
+                finding.severity.as_str(),
+                finding.title,
+                location,
+                finding.detail
+            );
         }
     }
 
@@ -58,23 +88,37 @@ pub fn json(report: &ReviewReport) -> String {
     json_field(&mut out, "risk_label", &report.risk_label, true, 2);
     out.push_str("  \"issue_refs\": [");
     for (index, issue) in report.issue_refs.iter().enumerate() {
-        if index > 0 { out.push_str(", "); }
+        if index > 0 {
+            out.push_str(", ");
+        }
         let _ = write!(out, "\"{}\"", escape_json(issue));
     }
     out.push_str("],\n  \"files\": [\n");
     for (index, file) in report.files.iter().enumerate() {
-        let comma = if index + 1 == report.files.len() { "" } else { "," };
+        let comma = if index + 1 == report.files.len() {
+            ""
+        } else {
+            ","
+        };
         let _ = writeln!(out, "    {{\"path\": \"{}\", \"kind\": \"{}\", \"additions\": {}, \"deletions\": {}, \"hunks\": {}}}{comma}", escape_json(&file.path), file.kind.as_str(), file.additions, file.deletions, file.hunks);
     }
     out.push_str("  ],\n  \"findings\": [\n");
     for (index, finding) in report.findings.iter().enumerate() {
-        let comma = if index + 1 == report.findings.len() { "" } else { "," };
-        let file = finding.file.as_deref().map_or("null".to_string(), |value| format!("\"{}\"", escape_json(value)));
+        let comma = if index + 1 == report.findings.len() {
+            ""
+        } else {
+            ","
+        };
+        let file = finding.file.as_deref().map_or("null".to_string(), |value| {
+            format!("\"{}\"", escape_json(value))
+        });
         let _ = writeln!(out, "    {{\"severity\": \"{}\", \"title\": \"{}\", \"detail\": \"{}\", \"file\": {file}}}{comma}", finding.severity.as_str(), escape_json(&finding.title), escape_json(&finding.detail));
     }
     out.push_str("  ],\n  \"checklist\": [");
     for (index, item) in report.checklist.iter().enumerate() {
-        if index > 0 { out.push_str(", "); }
+        if index > 0 {
+            out.push_str(", ");
+        }
         let _ = write!(out, "\"{}\"", escape_json(item));
     }
     out.push_str("]\n}\n");
@@ -84,21 +128,54 @@ pub fn json(report: &ReviewReport) -> String {
 pub fn html(report: &ReviewReport) -> String {
     let mut rows = String::new();
     for file in &report.files {
-        let score = report.file_risks.iter().find(|risk| risk.path == file.path).map_or(0, |risk| risk.score);
+        let score = report
+            .file_risks
+            .iter()
+            .find(|risk| risk.path == file.path)
+            .map_or(0, |risk| risk.score);
         let _ = write!(rows, "<tr><td><code>{}</code></td><td>{}</td><td>+{}</td><td>-{}</td><td><strong>{}</strong></td></tr>", escape_html(&file.path), file.kind.as_str(), file.additions, file.deletions, score);
     }
     let findings = if report.findings.is_empty() {
         "<p>No automated review findings.</p>".to_string()
     } else {
-        report.findings.iter().map(|finding| {
-            let location = finding.file.as_deref().map_or(String::new(), |file| format!(" <code>{}</code>", escape_html(file)));
-            format!("<article class=\"finding {}\"><strong>{}: {}</strong>{}<p>{}</p></article>", finding.severity.as_str(), finding.severity.as_str(), escape_html(&finding.title), location, escape_html(&finding.detail))
-        }).collect::<Vec<_>>().join("\n")
+        report
+            .findings
+            .iter()
+            .map(|finding| {
+                let location = finding.file.as_deref().map_or(String::new(), |file| {
+                    format!(" <code>{}</code>", escape_html(file))
+                });
+                format!(
+                    "<article class=\"finding {}\"><strong>{}: {}</strong>{}<p>{}</p></article>",
+                    finding.severity.as_str(),
+                    finding.severity.as_str(),
+                    escape_html(&finding.title),
+                    location,
+                    escape_html(&finding.detail)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     };
-    let checklist = report.checklist.iter().map(|item| format!("<li><input type=\"checkbox\"> {}</li>", escape_html(item))).collect::<Vec<_>>().join("\n");
-    let issues = if report.issue_refs.is_empty() { "None detected".to_string() } else { report.issue_refs.iter().map(|item| format!("<code>{}</code>", escape_html(item))).collect::<Vec<_>>().join(" ") };
+    let checklist = report
+        .checklist
+        .iter()
+        .map(|item| format!("<li><input type=\"checkbox\"> {}</li>", escape_html(item)))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let issues = if report.issue_refs.is_empty() {
+        "None detected".to_string()
+    } else {
+        report
+            .issue_refs
+            .iter()
+            .map(|item| format!("<code>{}</code>", escape_html(item)))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
 
-    format!(r#"<!doctype html>
+    format!(
+        r#"<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><style>
 :root{{--bg:#0b1020;--panel:#141b2d;--text:#edf2ff;--muted:#9aa7c2;--line:#2c3650;--accent:#89b4ff}}
@@ -109,33 +186,57 @@ pub fn html(report: &ReviewReport) -> String {
 <section class="panel"><h2>Findings</h2>{findings}</section>
 <section class="panel"><h2>Reviewer checklist</h2><ul>{checklist}</ul></section>
 </main></body></html>"#,
-        title = escape_html(&report.title), score = report.overall_score, label = escape_html(&report.risk_label), summary = escape_html(&report.summary), issues = issues, rows = rows, findings = findings, checklist = checklist)
+        title = escape_html(&report.title),
+        score = report.overall_score,
+        label = escape_html(&report.risk_label),
+        summary = escape_html(&report.summary),
+        issues = issues,
+        rows = rows,
+        findings = findings,
+        checklist = checklist
+    )
 }
 
 pub fn summarize_files(files: &[ChangedFile]) -> String {
     let additions: usize = files.iter().map(|file| file.additions).sum();
     let deletions: usize = files.iter().map(|file| file.deletions).sum();
-    format!("{} files changed with {additions} additions and {deletions} deletions.", files.len())
+    format!(
+        "{} files changed with {additions} additions and {deletions} deletions.",
+        files.len()
+    )
 }
 
 fn json_field(out: &mut String, key: &str, value: &str, comma: bool, indent: usize) {
     let comma = if comma { "," } else { "" };
-    let _ = writeln!(out, "{}\"{}\": \"{}\"{comma}", " ".repeat(indent), key, escape_json(value));
+    let _ = writeln!(
+        out,
+        "{}\"{}\": \"{}\"{comma}",
+        " ".repeat(indent),
+        key,
+        escape_json(value)
+    );
 }
 
 fn escape_json(input: &str) -> String {
-    input.chars().flat_map(|c| match c {
-        '\\' => "\\\\".chars().collect::<Vec<_>>(),
-        '"' => "\\\"".chars().collect(),
-        '\n' => "\\n".chars().collect(),
-        '\r' => "\\r".chars().collect(),
-        '\t' => "\\t".chars().collect(),
-        other => vec![other],
-    }).collect()
+    input
+        .chars()
+        .flat_map(|c| match c {
+            '\\' => "\\\\".chars().collect::<Vec<_>>(),
+            '"' => "\\\"".chars().collect(),
+            '\n' => "\\n".chars().collect(),
+            '\r' => "\\r".chars().collect(),
+            '\t' => "\\t".chars().collect(),
+            other => vec![other],
+        })
+        .collect()
 }
 
 fn escape_html(input: &str) -> String {
-    input.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 #[cfg(test)]
@@ -145,9 +246,28 @@ mod tests {
 
     fn report() -> ReviewReport {
         ReviewReport {
-            title: "Test".into(), summary: "Summary".into(), issue_refs: vec!["#1".into()],
-            files: vec![ChangedFile { old_path: None, path: "src/main.rs".into(), kind: ChangeKind::Added, additions: 1, deletions: 0, hunks: 1, added_lines: vec![], removed_lines: vec![] }],
-            file_risks: vec![FileRisk { path: "src/main.rs".into(), score: 20, reasons: vec![] }], findings: vec![], overall_score: 20, risk_label: "low".into(), checklist: vec!["Check".into()]
+            title: "Test".into(),
+            summary: "Summary".into(),
+            issue_refs: vec!["#1".into()],
+            files: vec![ChangedFile {
+                old_path: None,
+                path: "src/main.rs".into(),
+                kind: ChangeKind::Added,
+                additions: 1,
+                deletions: 0,
+                hunks: 1,
+                added_lines: vec![],
+                removed_lines: vec![],
+            }],
+            file_risks: vec![FileRisk {
+                path: "src/main.rs".into(),
+                score: 20,
+                reasons: vec![],
+            }],
+            findings: vec![],
+            overall_score: 20,
+            risk_label: "low".into(),
+            checklist: vec!["Check".into()],
         }
     }
 
