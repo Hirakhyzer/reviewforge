@@ -58,7 +58,8 @@ fn run() -> Result<(), String> {
     };
 
     if let Some(path) = args.output_path {
-        fs::write(&path, rendered).map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+        fs::write(&path, rendered)
+            .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
         println!("Review report written to {}", path.display());
     } else {
         print!("{rendered}");
@@ -89,11 +90,15 @@ fn parse_args(args: Vec<String>) -> Result<Args, String> {
             "analyze" => {}
             "--diff" | "-d" => {
                 index += 1;
-                parsed.diff_path = Some(PathBuf::from(args.get(index).ok_or("--diff requires a path")?));
+                parsed.diff_path = Some(PathBuf::from(
+                    args.get(index).ok_or("--diff requires a path")?,
+                ));
             }
             "--output" | "-o" => {
                 index += 1;
-                parsed.output_path = Some(PathBuf::from(args.get(index).ok_or("--output requires a path")?));
+                parsed.output_path = Some(PathBuf::from(
+                    args.get(index).ok_or("--output requires a path")?,
+                ));
             }
             "--format" | "-f" => {
                 index += 1;
@@ -129,10 +134,13 @@ fn parse_args(args: Vec<String>) -> Result<Args, String> {
 
 fn read_input(path: Option<&PathBuf>) -> Result<String, String> {
     match path {
-        Some(path) => fs::read_to_string(path).map_err(|error| format!("cannot read {}: {error}", path.display())),
+        Some(path) => fs::read_to_string(path)
+            .map_err(|error| format!("cannot read {}: {error}", path.display())),
         None => {
             let mut input = String::new();
-            io::stdin().read_to_string(&mut input).map_err(|error| format!("cannot read stdin: {error}"))?;
+            io::stdin()
+                .read_to_string(&mut input)
+                .map_err(|error| format!("cannot read stdin: {error}"))?;
             if input.trim().is_empty() {
                 Err("provide a unified diff with --diff <file> or through stdin".to_string())
             } else {
@@ -149,7 +157,9 @@ fn extract_issue_refs(context: &str) -> Vec<String> {
         if let Some(number) = candidate.strip_prefix('#') {
             if !number.is_empty() && number.chars().all(|c| c.is_ascii_digit()) {
                 let value = format!("#{number}");
-                if !refs.contains(&value) { refs.push(value); }
+                if !refs.contains(&value) {
+                    refs.push(value);
+                }
             }
         }
     }
@@ -166,12 +176,16 @@ mod tests {
 
     #[test]
     fn extracts_unique_issue_references() {
-        assert_eq!(extract_issue_refs("Fixes #12 and refs #12, #44."), vec!["#12", "#44"]);
+        assert_eq!(
+            extract_issue_refs("Fixes #12 and refs #12, #44."),
+            vec!["#12", "#44"]
+        );
     }
 
     #[test]
     fn parses_format() {
-        let args = parse_args(vec!["analyze".into(), "--format".into(), "json".into()]).expect("args");
+        let args =
+            parse_args(vec!["analyze".into(), "--format".into(), "json".into()]).expect("args");
         assert!(matches!(args.format, Format::Json));
     }
 }
