@@ -3,12 +3,25 @@ use std::collections::BTreeSet;
 use crate::model::{ChangeKind, ChangedFile, FileRisk, Finding, Severity};
 
 const CRITICAL_PATH_MARKERS: &[&str] = &[
-    "auth", "security", "permission", "payment", "billing", "migration", "schema",
-    "infra", "deploy", "docker", "workflow", "secret", "crypto",
+    "auth",
+    "security",
+    "permission",
+    "payment",
+    "billing",
+    "migration",
+    "schema",
+    "infra",
+    "deploy",
+    "docker",
+    "workflow",
+    "secret",
+    "crypto",
 ];
 
 const TEST_MARKERS: &[&str] = &["test", "tests", "spec", "__tests__"];
-const SOURCE_EXTENSIONS: &[&str] = &["rs", "py", "js", "ts", "tsx", "jsx", "go", "java", "kt", "swift", "c", "cpp"];
+const SOURCE_EXTENSIONS: &[&str] = &[
+    "rs", "py", "js", "ts", "tsx", "jsx", "go", "java", "kt", "swift", "c", "cpp",
+];
 
 pub fn analyze(files: &[ChangedFile]) -> (Vec<FileRisk>, Vec<Finding>, u8, Vec<String>) {
     let mut risks = Vec::new();
@@ -37,10 +50,17 @@ pub fn analyze(files: &[ChangedFile]) -> (Vec<FileRisk>, Vec<Finding>, u8, Vec<S
             reasons.push(format!("changes spread across {} hunks", file.hunks));
         }
 
-        if CRITICAL_PATH_MARKERS.iter().any(|marker| path_lower.contains(marker)) {
+        if CRITICAL_PATH_MARKERS
+            .iter()
+            .any(|marker| path_lower.contains(marker))
+        {
             score += 25;
-            reasons.push("touches a security, deployment, data, or money-sensitive path".to_string());
-            checklist.insert(format!("Validate critical-path behavior in `{}`", file.path));
+            reasons
+                .push("touches a security, deployment, data, or money-sensitive path".to_string());
+            checklist.insert(format!(
+                "Validate critical-path behavior in `{}`",
+                file.path
+            ));
         }
 
         if matches!(file.kind, ChangeKind::Deleted) {
@@ -60,10 +80,16 @@ pub fn analyze(files: &[ChangedFile]) -> (Vec<FileRisk>, Vec<Finding>, u8, Vec<S
             checklist.insert("Verify CI permissions, triggers, and secret usage".to_string());
         }
 
-        let risky_added = file.added_lines.iter().filter(|line| contains_risky_construct(line)).count();
+        let risky_added = file
+            .added_lines
+            .iter()
+            .filter(|line| contains_risky_construct(line))
+            .count();
         if risky_added > 0 {
             score += (risky_added.min(4) * 8) as u16;
-            reasons.push(format!("contains {risky_added} potentially risky added line(s)"));
+            reasons.push(format!(
+                "contains {risky_added} potentially risky added line(s)"
+            ));
             findings.push(Finding {
                 severity: if risky_added >= 3 { Severity::High } else { Severity::Medium },
                 title: "Potentially risky construct added".to_string(),
@@ -76,7 +102,8 @@ pub fn analyze(files: &[ChangedFile]) -> (Vec<FileRisk>, Vec<Finding>, u8, Vec<S
             findings.push(Finding {
                 severity: Severity::High,
                 title: "Test coverage removed".to_string(),
-                detail: "A test file is deleted. Confirm equivalent coverage exists elsewhere.".to_string(),
+                detail: "A test file is deleted. Confirm equivalent coverage exists elsewhere."
+                    .to_string(),
                 file: Some(file.path.clone()),
             });
         }
@@ -93,7 +120,9 @@ pub fn analyze(files: &[ChangedFile]) -> (Vec<FileRisk>, Vec<Finding>, u8, Vec<S
 
     let overall = calculate_overall_score(&risks, &findings);
     if checklist.is_empty() {
-        checklist.insert("Confirm the changed behavior matches the linked issue or requirement".to_string());
+        checklist.insert(
+            "Confirm the changed behavior matches the linked issue or requirement".to_string(),
+        );
         checklist.insert("Run the relevant automated tests".to_string());
     }
 
@@ -127,8 +156,14 @@ fn calculate_overall_score(risks: &[FileRisk], findings: &[Finding]) -> u8 {
     ((max * 2 + avg) / 3 + finding_bonus.min(20)).min(100) as u8
 }
 
-fn detect_test_gap(files: &[ChangedFile], findings: &mut Vec<Finding>, checklist: &mut BTreeSet<String>) {
-    let source_changed = files.iter().any(|file| is_source_file(&file.path) && !is_test_file(&file.path));
+fn detect_test_gap(
+    files: &[ChangedFile],
+    findings: &mut Vec<Finding>,
+    checklist: &mut BTreeSet<String>,
+) {
+    let source_changed = files
+        .iter()
+        .any(|file| is_source_file(&file.path) && !is_test_file(&file.path));
     let tests_changed = files.iter().any(|file| is_test_file(&file.path));
     if source_changed && !tests_changed {
         findings.push(Finding {
@@ -141,7 +176,11 @@ fn detect_test_gap(files: &[ChangedFile], findings: &mut Vec<Finding>, checklist
     }
 }
 
-fn detect_large_pr(files: &[ChangedFile], findings: &mut Vec<Finding>, checklist: &mut BTreeSet<String>) {
+fn detect_large_pr(
+    files: &[ChangedFile],
+    findings: &mut Vec<Finding>,
+    checklist: &mut BTreeSet<String>,
+) {
     let total: usize = files.iter().map(ChangedFile::total_changes).sum();
     if files.len() >= 20 || total >= 800 {
         findings.push(Finding {
@@ -150,7 +189,10 @@ fn detect_large_pr(files: &[ChangedFile], findings: &mut Vec<Finding>, checklist
             detail: format!("This change spans {} files and {total} changed lines. Consider splitting it or assigning domain-specific reviewers.", files.len()),
             file: None,
         });
-        checklist.insert("Consider splitting the pull request into smaller independently reviewable changes".to_string());
+        checklist.insert(
+            "Consider splitting the pull request into smaller independently reviewable changes"
+                .to_string(),
+        );
     }
 }
 
@@ -173,18 +215,35 @@ fn contains_risky_construct(line: &str) -> bool {
 }
 
 fn is_dependency_file(path: &str) -> bool {
-    ["cargo.toml", "cargo.lock", "package.json", "package-lock.json", "pnpm-lock", "yarn.lock", "requirements.txt", "poetry.lock", "go.mod", "go.sum"]
-        .iter()
-        .any(|name| path.ends_with(name))
+    [
+        "cargo.toml",
+        "cargo.lock",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock",
+        "yarn.lock",
+        "requirements.txt",
+        "poetry.lock",
+        "go.mod",
+        "go.sum",
+    ]
+    .iter()
+    .any(|name| path.ends_with(name))
 }
 
 fn is_ci_file(path: &str) -> bool {
-    path.contains(".github/workflows/") || path.ends_with("gitlab-ci.yml") || path.contains("buildkite")
+    path.contains(".github/workflows/")
+        || path.ends_with("gitlab-ci.yml")
+        || path.contains("buildkite")
 }
 
 fn is_test_file(path: &str) -> bool {
     let lower = path.to_ascii_lowercase();
-    TEST_MARKERS.iter().any(|marker| lower.split(|c: char| matches!(c, '/' | '.' | '_' | '-')).any(|part| part == *marker))
+    TEST_MARKERS.iter().any(|marker| {
+        lower
+            .split(|c: char| matches!(c, '/' | '.' | '_' | '-'))
+            .any(|part| part == *marker)
+    })
 }
 
 fn is_source_file(path: &str) -> bool {
@@ -212,7 +271,9 @@ mod tests {
     #[test]
     fn flags_source_without_tests() {
         let (_, findings, _, _) = analyze(&[file("src/main.rs", 10, 2)]);
-        assert!(findings.iter().any(|finding| finding.title == "No test changes detected"));
+        assert!(findings
+            .iter()
+            .any(|finding| finding.title == "No test changes detected"));
     }
 
     #[test]
